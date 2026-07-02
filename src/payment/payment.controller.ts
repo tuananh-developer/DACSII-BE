@@ -182,6 +182,8 @@ export class PaymentController {
     const booking = await this.bookingService.findOne(bookingId);
     const bookingCode = booking?.code || bookingId;
 
+    this.logger.debug(`[VNPAY_RETURN] redirectBase="${redirectBase}" | WEB_URL="${WEB_URL}" | MOBILE_DEEP_LINK="${MOBILE_DEEP_LINK}" | platform="${platform}"`);
+
     // Nếu verify thành công, cập nhật trạng thái booking và payment
     if (result.isSuccess) {
       try {

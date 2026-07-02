@@ -279,16 +279,12 @@ export class PaymentService {
     try {
       const payment = await this.paymentRepository.findOne({
         where: { booking: { id: bookingId }, status: PaymentStatus.PENDING },
-        relations: [
-          'booking',
-          'booking.userProfile',
-          'booking.userProfile.account',
-          'booking.field',
-          'booking.field.branch',
-          'booking.field.branch.address',
-          'booking.field.branch.address.ward',
-          'booking.field.branch.address.city',
-        ],
+        relations: { 
+          booking: { 
+            userProfile: { account: true },
+            field: { branch: { address: { ward: true, city: true } } }
+          }
+        },
       });
 
       if (!payment) {
