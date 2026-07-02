@@ -466,7 +466,10 @@ export class FieldsService {
     );
     const field = await this.fieldRepository.findOne({
       where: { id },
-      relations: ['branch', 'utilities'],
+      relations: { 
+        branch: true,
+         utilities: true 
+        },
     });
 
     if (!field) {
@@ -533,7 +536,7 @@ export class FieldsService {
     this.logger.log(`User ${userProfile.id} removing field with ID: ${id}`);
     const field = await this.fieldRepository.findOne({
       where: { id },
-      relations: ['branch'],
+      relations: { branch: true },
     });
 
     if (!field) {
@@ -566,7 +569,7 @@ export class FieldsService {
     );
     const field = await this.fieldRepository.findOne({
       where: { id: fieldId },
-      relations: ['branch'],
+      relations: { branch: true },
     });
     if (!field) {
       this.logger.error(`Field with ID ${fieldId} not found for image upload`);

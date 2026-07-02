@@ -177,7 +177,7 @@ export class BranchService {
       if (manager_id) {
         managerProfile = await this.userProfileRepository.findOne({
           where: { id: manager_id },
-          relations: ['account', 'account.role'],
+          relations: { account: { role: true } },
         });
         if (!managerProfile) {
           throw new NotFoundException(
@@ -230,7 +230,13 @@ export class BranchService {
    */
   async findAll(): Promise<BranchResponseDto[]> {
     const branches = await this.branchRepository.find({
-      relations: ['address', 'address.ward', 'address.city', 'manager'],
+      relations: { 
+        address: { 
+          ward: true, 
+          city: true 
+        }, 
+        manager: true 
+      }
     });
     return branches.map(branch => this.mapBranchToResponseDto(branch));
   }
@@ -265,12 +271,13 @@ export class BranchService {
   async findOne(id: string): Promise<BranchResponseDto> {
     const branch = await this.branchRepository.findOne({
       where: { id },
-      relations: [
-        'address',
-        'address.ward',
-        'address.city',
-        'manager',
-      ],
+      relations: { 
+        address: { 
+          ward: true, 
+          city: true 
+        }, 
+        manager: true 
+      }
     });
     if (!branch) {
       throw new NotFoundException(`Branch with ID ${id} not found.`);
@@ -288,7 +295,7 @@ export class BranchService {
   async update(id: string, updateBranchDto: UpdateBranchDto): Promise<BranchResponseDto> {
     const branchEntity = await this.branchRepository.findOne({
       where: { id },
-      relations: ['address'],
+      relations: { address: true },
     });
 
     if (!branchEntity) {
@@ -345,7 +352,7 @@ export class BranchService {
       } else {
         const managerProfile = await this.userProfileRepository.findOne({
           where: { id: manager_id },
-          relations: ['account', 'account.role'],
+          relations: { account: { role: true } },
         });
         if (managerProfile) {
           branchEntity.manager = managerProfile;

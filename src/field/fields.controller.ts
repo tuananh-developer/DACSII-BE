@@ -55,7 +55,7 @@ export class FieldsController {
   constructor(
     private readonly fieldsService: FieldsService,
     private readonly usersService: UsersService,
-  ) { }
+  ) {}
 
   /**
    * @route POST /fields
@@ -84,10 +84,12 @@ export class FieldsController {
         createFieldDto,
       )}`,
     );
-    const userProfile = await this.usersService.findProfileByAccountId(userId, [
-      'account.role',
-      'branch',
-    ]);
+    const userProfile = await this.usersService.findProfileByAccountId(userId, {
+      account: {
+        role: true,
+      },
+      branch: true,
+    });
 
     if (!userProfile) {
       throw new NotFoundException('Không tìm thấy hồ sơ người dùng.');
@@ -106,7 +108,11 @@ export class FieldsController {
   @ApiOperation({
     summary: 'Tìm kiếm sân bóng (Hỗ trợ tìm theo vị trí, tên, chi nhánh)',
   })
-  @ApiResponse({ status: 200, description: 'Thành công.', type: FieldsResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Thành công.',
+    type: FieldsResponseDto,
+  })
   @UseInterceptors(ClassSerializerInterceptor)
   findAll(
     @Query() filterDto: FilterFieldDto,
@@ -164,10 +170,12 @@ export class FieldsController {
       `Updating field ${id} with DTO: ${JSON.stringify(updateFieldDto)}`,
     );
     const userId = req.user.sub;
-    const userProfile = await this.usersService.findProfileByAccountId(userId, [
-      'account.role',
-      'branch',
-    ]);
+    const userProfile = await this.usersService.findProfileByAccountId(userId, {
+      account: {
+        role: true,
+      },
+      branch: true,
+    });
     if (!userProfile) {
       throw new NotFoundException('Không tìm thấy hồ sơ người dùng.');
     }
@@ -192,10 +200,12 @@ export class FieldsController {
   ): Promise<{ message: string }> {
     this.logger.log(`Removing field with id: ${id}`);
     const userId = req.user.sub;
-    const userProfile = await this.usersService.findProfileByAccountId(userId, [
-      'account.role',
-      'branch',
-    ]);
+    const userProfile = await this.usersService.findProfileByAccountId(userId, {
+      account: {
+        role: true,
+      },
+      branch: true,
+    });
     if (!userProfile) {
       throw new NotFoundException('Không tìm thấy hồ sơ người dùng.');
     }
@@ -234,10 +244,12 @@ export class FieldsController {
   ) {
     this.logger.log(`Uploading ${files.length} images for field ${fieldId}`);
     const userId = req.user.sub;
-    const userProfile = await this.usersService.findProfileByAccountId(userId, [
-      'account.role',
-      'branch',
-    ]);
+    const userProfile = await this.usersService.findProfileByAccountId(userId, {
+      account: {
+        role: true,
+      },
+      branch: true,
+    });
     if (!userProfile) {
       throw new NotFoundException('Không tìm thấy hồ sơ người dùng.');
     }
