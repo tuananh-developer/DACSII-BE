@@ -6,7 +6,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Voucher } from './entities/voucher.entity';
-import { IsNull, LessThanOrEqual, MoreThan, Repository, EntityManager, Brackets } from 'typeorm';
+import {
+  IsNull,
+  LessThanOrEqual,
+  MoreThan,
+  Repository,
+  EntityManager,
+  Brackets,
+} from 'typeorm';
 import { CreateVoucherDto } from './dto/create-voucher.dto';
 import { UserProfile } from '@/user/entities/users-profile.entity';
 import { Booking } from '@/booking/entities/booking.entity';
@@ -44,9 +51,13 @@ export class VoucherService {
     const dto = new VoucherDto();
     dto.id = voucher.id;
     dto.code = voucher.code;
-    dto.discountAmount = voucher.discountAmount ? Number(voucher.discountAmount) : null;
+    dto.discountAmount = voucher.discountAmount
+      ? Number(voucher.discountAmount)
+      : null;
     dto.discountPercentage = voucher.discountPercentage;
-    dto.maxDiscountAmount = voucher.maxDiscountAmount ? Number(voucher.maxDiscountAmount) : null;
+    dto.maxDiscountAmount = voucher.maxDiscountAmount
+      ? Number(voucher.maxDiscountAmount)
+      : null;
     dto.minOrderValue = Number(voucher.minOrderValue);
     dto.validFrom = voucher.validFrom;
     dto.validTo = voucher.validTo;
@@ -76,8 +87,8 @@ export class VoucherService {
     }
 
     const voucher = this.voucherRepository.create({
-        ...dto,
-        isCollectible: dto.isCollectible ?? false,
+      ...dto,
+      isCollectible: dto.isCollectible ?? false,
     });
     const savedVoucher = await this.voucherRepository.save(voucher);
     this.logger.log(`Voucher ${savedVoucher.code} created successfully.`);
@@ -91,9 +102,7 @@ export class VoucherService {
   async createApologyVoucher(userProfile: UserProfile): Promise<void> {
     this.logger.log(`Creating apology voucher for user ${userProfile.id}`);
     try {
-      const voucherCode = `APOLOGY-${userProfile.id.slice(
-        -6,
-      )}-${Date.now()}`;
+      const voucherCode = `APOLOGY-${userProfile.id.slice(-6)}-${Date.now()}`;
       const validTo = new Date();
       validTo.setDate(validTo.getDate() + 30); // Voucher có hạn 30 ngày
 
@@ -164,7 +173,9 @@ export class VoucherService {
    * @returns Danh sách các voucher có thể áp dụng.
    */
   async findAvailableVouchers(orderValue: number): Promise<VoucherDto[]> {
-    this.logger.log(`Finding available vouchers for order value: ${orderValue}`);
+    this.logger.log(
+      `Finding available vouchers for order value: ${orderValue}`,
+    );
     const now = new Date();
     const availableVouchers = await this.voucherRepository.find({
       where: {
@@ -182,7 +193,7 @@ export class VoucherService {
       },
     });
     this.logger.log(`Found ${availableVouchers.length} available vouchers.`);
-    return availableVouchers.map(v => this.mapToDto(v));
+    return availableVouchers.map((v) => this.mapToDto(v));
   }
 
   /**
@@ -196,34 +207,39 @@ export class VoucherService {
     // Lấy danh sách voucher đã thu thập hoặc đã sử dụng
     const collectedVouchers = await this.voucherCollectionRepository.find({
       where: { userProfileId },
-      select: ['voucherId'],
+      select: { voucherId: true },
     });
-    const collectedVoucherIds = collectedVouchers.map(c => c.voucherId);
+    const collectedVoucherIds = collectedVouchers.map((c) => c.voucherId);
 
     const usedVouchers = await this.voucherUsageRepository.find({
-        where: { userProfileId },
-        select: ['voucherId'],
+      where: { userProfileId },
+      select: { voucherId: true },
     });
-    const usedVoucherIds = usedVouchers.map(u => u.voucherId);
-    
-    const excludedIds = [...new Set([...collectedVoucherIds, ...usedVoucherIds])];
+    const usedVoucherIds = usedVouchers.map((u) => u.voucherId);
+
+    const excludedIds = [
+      ...new Set([...collectedVoucherIds, ...usedVoucherIds]),
+    ];
 
     const queryBuilder = this.voucherRepository.createQueryBuilder('voucher');
-    queryBuilder.where('voucher.quantity > 0')
+    queryBuilder
+      .where('voucher.quantity > 0')
       .andWhere('voucher.validFrom <= :now', { now })
       .andWhere('voucher.validTo > :now', { now })
       .andWhere('voucher.isCollectible = true')
       .andWhere('voucher.userProfileId IS NULL');
 
     if (excludedIds.length > 0) {
-      queryBuilder.andWhere('voucher.id NOT IN (:...excludedIds)', { excludedIds });
+      queryBuilder.andWhere('voucher.id NOT IN (:...excludedIds)', {
+        excludedIds,
+      });
     }
 
     const collectibleVouchers = await queryBuilder
       .orderBy('voucher.createdAt', 'DESC')
       .getMany();
 
-    return collectibleVouchers.map(v => this.mapToDto(v));
+    return collectibleVouchers.map((v) => this.mapToDto(v));
   }
 
   /**
@@ -231,31 +247,42 @@ export class VoucherService {
    * @param userProfileId ID người dùng.
    * @param voucherId ID voucher.
    */
-  async collectVoucher(userProfileId: string, voucherId: string): Promise<void> {
+  async collectVoucher(
+    userProfileId: string,
+    voucherId: string,
+  ): Promise<void> {
     this.logger.log(`User ${userProfileId} collecting voucher ${voucherId}`);
-    
-    const voucher = await this.voucherRepository.findOne({ where: { id: voucherId } });
+
+    const voucher = await this.voucherRepository.findOne({
+      where: { id: voucherId },
+    });
     if (!voucher) throw new NotFoundException('Voucher không tồn tại');
-    
-    if (!voucher.isCollectible) throw new BadRequestException('Voucher này không thể thu thập');
+
+    if (!voucher.isCollectible)
+      throw new BadRequestException('Voucher này không thể thu thập');
     if (voucher.userProfileId && voucher.userProfileId !== userProfileId) {
-        throw new BadRequestException('Voucher này không dành cho bạn');
+      throw new BadRequestException('Voucher này không dành cho bạn');
     }
 
     const now = new Date();
-    if (now < voucher.validFrom) throw new BadRequestException('Voucher chưa đến thời gian áp dụng');
-    if (now > voucher.validTo) throw new BadRequestException('Voucher đã hết hạn');
-    if (voucher.quantity <= 0) throw new BadRequestException('Voucher đã hết lượt thu thập');
+    if (now < voucher.validFrom)
+      throw new BadRequestException('Voucher chưa đến thời gian áp dụng');
+    if (now > voucher.validTo)
+      throw new BadRequestException('Voucher đã hết hạn');
+    if (voucher.quantity <= 0)
+      throw new BadRequestException('Voucher đã hết lượt thu thập');
 
     const alreadyCollected = await this.voucherCollectionRepository.findOne({
       where: { userProfileId, voucherId },
     });
-    if (alreadyCollected) throw new BadRequestException('Bạn đã thu thập voucher này rồi');
+    if (alreadyCollected)
+      throw new BadRequestException('Bạn đã thu thập voucher này rồi');
 
     const alreadyUsed = await this.voucherUsageRepository.findOne({
-        where: { userProfileId, voucherId },
+      where: { userProfileId, voucherId },
     });
-    if (alreadyUsed) throw new BadRequestException('Bạn đã sử dụng voucher này rồi');
+    if (alreadyUsed)
+      throw new BadRequestException('Bạn đã sử dụng voucher này rồi');
 
     const collection = this.voucherCollectionRepository.create({
       userProfileId,
@@ -277,16 +304,16 @@ export class VoucherService {
     // Lấy danh sách ID các voucher người dùng đã sử dụng
     const usedVoucherUsages = await this.voucherUsageRepository.find({
       where: { userProfileId },
-      select: ['voucherId'],
+      select: { voucherId: true },
     });
-    const usedVoucherIds = usedVoucherUsages.map(usage => usage.voucherId);
+    const usedVoucherIds = usedVoucherUsages.map((usage) => usage.voucherId);
 
     // Lấy danh sách ID các voucher người dùng đã thu thập
     const collectedVouchers = await this.voucherCollectionRepository.find({
-        where: { userProfileId },
-        select: ['voucherId'],
+      where: { userProfileId },
+      select: { voucherId: true },
     });
-    const collectedVoucherIds = collectedVouchers.map(c => c.voucherId);
+    const collectedVoucherIds = collectedVouchers.map((c) => c.voucherId);
 
     // Tìm các voucher:
     // - Còn số lượng
@@ -297,30 +324,42 @@ export class VoucherService {
     //   - HOẶC Là voucher công khai không cần thu thập (userProfileId is null and isCollectible = false)
     //   - HOẶC Là voucher đã được user thu thập (voucher.id IN collectedVoucherIds)
     const queryBuilder = this.voucherRepository.createQueryBuilder('voucher');
-    
-    queryBuilder.where('voucher.quantity > 0')
+
+    queryBuilder
+      .where('voucher.quantity > 0')
       .andWhere('voucher.validFrom <= :now', { now })
       .andWhere('voucher.validTo > :now', { now });
 
     if (usedVoucherIds.length > 0) {
-      queryBuilder.andWhere('voucher.id NOT IN (:...usedVoucherIds)', { usedVoucherIds });
+      queryBuilder.andWhere('voucher.id NOT IN (:...usedVoucherIds)', {
+        usedVoucherIds,
+      });
     }
 
-    queryBuilder.andWhere(new Brackets(qb => {
-        qb.where('voucher.userProfileId = :userProfileId', { userProfileId })
-          .orWhere('(voucher.userProfileId IS NULL AND voucher.isCollectible = false)');
-        
+    queryBuilder.andWhere(
+      new Brackets((qb) => {
+        qb.where('voucher.userProfileId = :userProfileId', {
+          userProfileId,
+        }).orWhere(
+          '(voucher.userProfileId IS NULL AND voucher.isCollectible = false)',
+        );
+
         if (collectedVoucherIds.length > 0) {
-            qb.orWhere('voucher.id IN (:...collectedVoucherIds)', { collectedVoucherIds });
+          qb.orWhere('voucher.id IN (:...collectedVoucherIds)', {
+            collectedVoucherIds,
+          });
         }
-    }));
+      }),
+    );
 
     const availableVouchers = await queryBuilder
       .orderBy('voucher.createdAt', 'DESC')
       .getMany();
 
-    this.logger.log(`Found ${availableVouchers.length} available vouchers for user ${userProfileId}.`);
-    return availableVouchers.map(v => this.mapToDto(v));
+    this.logger.log(
+      `Found ${availableVouchers.length} available vouchers for user ${userProfileId}.`,
+    );
+    return availableVouchers.map((v) => this.mapToDto(v));
   }
 
   /**
@@ -331,20 +370,24 @@ export class VoucherService {
    * @param manager Optional EntityManager for transaction.
    */
   async recordUsage(
-    userProfileId: string, 
-    voucherId: string, 
+    userProfileId: string,
+    voucherId: string,
     bookingId?: string,
-    manager?: EntityManager
+    manager?: EntityManager,
   ): Promise<void> {
-    this.logger.log(`Recording voucher usage: user ${userProfileId}, voucher ${voucherId}`);
-    const repo = manager ? manager.getRepository(VoucherUsage) : this.voucherUsageRepository;
+    this.logger.log(
+      `Recording voucher usage: user ${userProfileId}, voucher ${voucherId}`,
+    );
+    const repo = manager
+      ? manager.getRepository(VoucherUsage)
+      : this.voucherUsageRepository;
     const usage = repo.create({
       userProfileId,
       voucherId,
       bookingId,
     });
     await repo.save(usage);
-    
+
     // Nếu voucher này đã được thu thập, có thể xóa khỏi danh sách thu thập (vì đã dùng)
     // Hoặc giữ lại cũng được, vì logic findMyVouchers đã loại trừ usedVouchers.
   }
@@ -356,12 +399,16 @@ export class VoucherService {
    * @param manager Optional EntityManager for transaction.
    */
   async cancelUsage(
-    userProfileId: string, 
+    userProfileId: string,
     voucherId: string,
-    manager?: EntityManager
+    manager?: EntityManager,
   ): Promise<void> {
-    this.logger.log(`Cancelling voucher usage: user ${userProfileId}, voucher ${voucherId}`);
-    const repo = manager ? manager.getRepository(VoucherUsage) : this.voucherUsageRepository;
+    this.logger.log(
+      `Cancelling voucher usage: user ${userProfileId}, voucher ${voucherId}`,
+    );
+    const repo = manager
+      ? manager.getRepository(VoucherUsage)
+      : this.voucherUsageRepository;
     await repo.delete({ userProfileId, voucherId });
   }
 
@@ -371,7 +418,7 @@ export class VoucherService {
   async getUsageByBookingId(bookingId: string): Promise<VoucherUsage | null> {
     return this.voucherUsageRepository.findOne({
       where: { bookingId },
-      relations: ['voucher'],
+      relations: { voucher: true },
     });
   }
 
@@ -392,7 +439,11 @@ export class VoucherService {
    * @throws {NotFoundException} Nếu voucher không tồn tại.
    * @throws {BadRequestException} Nếu voucher không hợp lệ (hết hạn, hết lượt, không đủ điều kiện,...).
    */
-  async checkVoucher(code: string, orderValue: number, userProfileId: string): Promise<VoucherCheckResponseDto> {
+  async checkVoucher(
+    code: string,
+    orderValue: number,
+    userProfileId: string,
+  ): Promise<VoucherCheckResponseDto> {
     this.logger.log(
       `Checking voucher code "${code}" for order value: ${orderValue} by user ${userProfileId}`,
     );
@@ -417,20 +468,22 @@ export class VoucherService {
       this.logger.warn(
         `User ${userProfileId} trying to use a private voucher of user ${voucher.userProfileId}`,
       );
-      throw new BadRequestException(
-        'Bạn không thể sử dụng mã giảm giá này.',
-      );
+      throw new BadRequestException('Bạn không thể sử dụng mã giảm giá này.');
     }
 
     // Nếu là voucher cần thu thập, kiểm tra xem đã thu thập chưa
     if (voucher.isCollectible) {
-        const isCollected = await this.voucherCollectionRepository.findOne({
-            where: { voucherId: voucher.id, userProfileId },
-        });
-        if (!isCollected) {
-            this.logger.warn(`User ${userProfileId} trying to use collectible voucher "${code}" without collecting.`);
-            throw new BadRequestException('Bạn cần thu thập mã giảm giá này trước khi sử dụng.');
-        }
+      const isCollected = await this.voucherCollectionRepository.findOne({
+        where: { voucherId: voucher.id, userProfileId },
+      });
+      if (!isCollected) {
+        this.logger.warn(
+          `User ${userProfileId} trying to use collectible voucher "${code}" without collecting.`,
+        );
+        throw new BadRequestException(
+          'Bạn cần thu thập mã giảm giá này trước khi sử dụng.',
+        );
+      }
     }
 
     const now = new Date();
@@ -483,7 +536,7 @@ export class VoucherService {
     this.logger.log(
       `Voucher "${code}" applied, discount amount: ${discountAmount}.`,
     );
-    
+
     const response = new VoucherCheckResponseDto();
     response.isValid = true;
     response.code = voucher.code;
@@ -508,5 +561,4 @@ export class VoucherService {
     this.logger.log(`Voucher ${id} soft deleted successfully.`);
     return { message: 'Xóa voucher thành công.' };
   }
-
 }
