@@ -159,7 +159,10 @@ export class BookingService {
   async downloadTicket(bookingId: string): Promise<Buffer> {
     const booking = await this.bookingRepository.findOne({
       where: { id: bookingId },
-      relations: ['userProfile', 'field', 'field.branch'],
+      relations: { 
+        userProfile: true, 
+        field: { branch: true }
+       },
     });
 
     if (!booking) {
@@ -425,11 +428,12 @@ export class BookingService {
     // 1. Fetch booking and associated payment outside transaction
     const booking = await this.bookingRepository.findOne({
       where: { id: bookingId },
-      relations: [
-        'userProfile',
-        'userProfile.account',
-        'payment',
-      ],
+      relations: {
+        userProfile: {
+          account: true
+        },
+        payment: true
+      },
     });
 
     if (!booking) {
@@ -520,7 +524,7 @@ export class BookingService {
 
       const voucherUsage = await queryRunner.manager.findOne(VoucherUsage, {
         where: { bookingId: booking.id },
-        relations: ['voucher']
+        relations: { voucher: true }
       });
 
       if (voucherUsage && voucherUsage.voucher) {
@@ -576,15 +580,20 @@ export class BookingService {
     this.logger.log(`Finding booking with id ${id}`);
     const booking = await this.bookingRepository.findOne({
       where: { id },
-      relations: [
-        'userProfile',
-        'userProfile.account',
-        'field',
-        'field.branch',
-        'field.branch.address',
-        'field.branch.address.ward',
-        'field.branch.address.city',
-      ],
+      relations: {
+        userProfile: {
+          account: true
+        },
+        field: {
+          branch: {
+            address: {
+              ward: true,
+              city: true
+            }
+          }
+        },
+        payment: true
+      },
     });
 
     if (booking) {
@@ -773,7 +782,14 @@ export class BookingService {
     try {
       const field = await this.fieldRepository.findOne({
         where: { id: dto.fieldId },
-        relations: ['branch', 'branch.address', 'branch.address.ward', 'branch.address.city'],
+        relations: { 
+          branch: { 
+            address: { 
+              ward: true, 
+              city: true 
+            } 
+          } 
+        },
       });
       if (!field) {
         throw new NotFoundException('Sân không tồn tại.');
@@ -865,7 +881,15 @@ export class BookingService {
         { id: identifier }, // Searches by UUID
         { code: identifier }, // Searches by code
       ],
-      relations: ['userProfile', 'field', 'field.branch', 'field.branch.address', 'field.branch.address.ward', 'field.branch.address.city']
+      relations: { 
+        userProfile: true, 
+        field: { 
+          branch: { address: {
+             ward: true, 
+             city: true } 
+            } 
+          } 
+        }
     });
 
     if (!booking) {
@@ -907,7 +931,12 @@ export class BookingService {
     // Reload booking to get fresh data
     const savedBooking = await this.bookingRepository.findOne({
       where: { id: booking.id },
-      relations: ['userProfile', 'field', 'field.branch', 'field.branch.address', 'field.branch.address.ward', 'field.branch.address.city']
+      relations: { 
+        userProfile: true, 
+        field: { 
+          branch: { address: {
+             ward: true, 
+             city: true } } } }
     });
 
     this.logger.log(`Booking ${booking.id} checked in successfully`);
@@ -935,7 +964,12 @@ export class BookingService {
         start_time: LessThan(endOfDay),
         end_time: MoreThan(startOfDay),
       },
-      select: ['id', 'start_time', 'end_time', 'status'],
+      select: {
+        id: true, 
+        start_time: true, 
+        end_time: true, 
+        status: true
+      },
       order: { start_time: 'ASC' },
     });
 

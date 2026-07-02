@@ -36,7 +36,7 @@ export class BookingCronService {
         status: BookingStatus.PENDING,
         createdAt: Raw((alias) => `${alias} < NOW() - INTERVAL 30 MINUTE`),
       },
-      relations: ['userProfile', 'payment'],
+      relations: { userProfile: true, payment: true },
     });
 
     if (expiredBookings.length === 0) {
@@ -58,7 +58,7 @@ export class BookingCronService {
 
         const voucherUsage = await queryRunner.manager.findOne(VoucherUsage, {
           where: { bookingId: booking.id },
-          relations: ['voucher']
+          relations: { voucher: true }
         });
 
         if (voucherUsage && voucherUsage.voucher) {

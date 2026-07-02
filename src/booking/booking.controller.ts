@@ -189,7 +189,7 @@ export class BookingController {
     @Req() req: AuthenticatedRequest,
   ): Promise<MessageResponseDto> {
     const accountId = req.user.sub;
-    const userRole = req.user.role as unknown as RoleEnum;
+    const userRole = req.user.role;
     this.logger.log(
       `User ${accountId} (Role: ${userRole}) attempting to cancel booking ${bookingId}`,
     );
