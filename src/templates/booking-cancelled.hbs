@@ -1,123 +1,123 @@
-<!DOCTYPE html>
-<html lang="vi">
+<html lang='vi'>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
     <title>Thông Báo Hủy Đặt Sân</title>
     <style>
-        body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            background-color: #f4f4f7;
-            margin: 0;
-            padding: 0;
-            color: #333;
-        }
+      body {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        background-color: #f4f4f7;
+        margin: 0;
+        padding: 0;
+        color: #333;
+      }
 
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            background-color: #ffffff;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e0e0e0;
-        }
+      .container {
+        max-width: 600px;
+        margin: 20px auto;
+        background-color: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e0e0e0;
+      }
 
-        .header {
-            background-color: #DC3545;
-            /* Màu đỏ cho việc hủy */
-            color: #ffffff;
-            padding: 30px 20px;
-            text-align: center;
-        }
+      .header {
+        background-color: #dc3545;
+        /* Màu đỏ cho việc hủy */
+        color: #ffffff;
+        padding: 30px 20px;
+        text-align: center;
+      }
 
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-        }
+      .header h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+      }
+      .content {
+        padding: 30px 25px;
+        line-height: 1.6;
+      }
 
-        .content {
-            padding: 30px 25px;
-            line-height: 1.6;
-        }
+      .content p {
+        margin: 0 0 15px;
+      }
 
-        .content p {
-            margin: 0 0 15px;
-        }
+      .booking-details {
+        background-color: #f9f9f9;
+        border: 1px solid #eeeeee;
+        border-radius: 6px;
+        padding: 20px;
+        margin-top: 20px;
+        margin-bottom: 25px;
+      }
 
-        .booking-details {
-            background-color: #f9f9f9;
-            border: 1px solid #eeeeee;
-            border-radius: 6px;
-            padding: 20px;
-            margin-top: 20px;
-            margin-bottom: 25px;
-        }
+      .booking-details h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 18px;
+        color: #dc3545;
+        border-bottom: 2px solid #f0f0f0;
+        padding-bottom: 10px;
+      }
 
-        .booking-details h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
-            font-size: 18px;
-            color: #DC3545;
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 10px;
-        }
+      .booking-details p {
+        margin-bottom: 8px;
+      }
 
-        .booking-details p {
-            margin-bottom: 8px;
-        }
+      .booking-details strong {
+        color: #555;
+        min-width: 120px;
+        display: inline-block;
+      }
 
-        .booking-details strong {
-            color: #555;
-            min-width: 120px;
-            display: inline-block;
-        }
+      .cta-button {
+        display: inline-block;
+        background-color: #007bff;
+        color: #ffffff;
+        padding: 12px 25px;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: 500;
+        margin-top: 15px;
+      }
 
-        .cta-button {
-            display: inline-block;
-            background-color: #007BFF;
-            color: #ffffff;
-            padding: 12px 25px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: 500;
-            margin-top: 15px;
-        }
-
-        .footer {
-            background-color: #f4f4f7;
-            text-align: center;
-            padding: 20px;
-            font-size: 12px;
-            color: #888;
-        }
+      .footer {
+        background-color: #f4f4f7;
+        text-align: center;
+        padding: 20px;
+        font-size: 12px;
+        color: #888;
+      }
     </style>
-</head>
+  </head>
 
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Đã Hủy Đặt Sân Thành Công</h1>
+  <body>
+    <div class='container'>
+      <div class='header'>
+        <h1>Đã Hủy Đặt Sân Thành Công</h1>
+      </div>
+      <div class='content'>
+        <p>Chào <strong>{{full_name}}</strong>,</p>
+        <p>Yêu cầu đặt sân của bạn đã được hủy thành công theo thông tin chi
+          tiết dưới đây.</p>
+        <div class='booking-details'>
+          <h3>Chi Tiết Đơn Đã Hủy</h3>
+          <p><strong>Mã đặt sân:</strong> {{bookingId}}</p>
+          <p><strong>Sân bóng:</strong> {{fieldName}}</p>
+          <p><strong>Thời gian:</strong> {{startTime}} - {{endTime}}</p>
         </div>
-        <div class="content">
-            <p>Chào <strong>{{full_name}}</strong>,</p>
-            <p>Yêu cầu đặt sân của bạn đã được hủy thành công theo thông tin chi tiết dưới đây.</p>
-            <div class="booking-details">
-                <h3>Chi Tiết Đơn Đã Hủy</h3>
-                <p><strong>Mã đặt sân:</strong> {{bookingId}}</p>
-                <p><strong>Sân bóng:</strong> {{fieldName}}</p>
-                <p><strong>Thời gian:</strong> {{startTime}} - {{endTime}}</p>
-            </div>
-            <p>{{refundMessage}}</p>
-            <p>Chúng tôi rất tiếc vì sự thay đổi này. Nếu bạn muốn tìm một lịch trình khác, vui lòng truy cập lại trang web của chúng tôi.</p>
-            <a href="{{frontendUrl}}" class="cta-button">Đặt Lại Sân Ngay</a>
-        </div>
-        <div class="footer">
-            <p>&copy; {{currentYear}} Sân Bóng Của Tôi. Mọi quyền được bảo lưu.</p>
-        </div>
+        <p>{{refundMessage}}</p>
+        <p>Chúng tôi rất tiếc vì sự thay đổi này. Nếu bạn muốn tìm một lịch
+          trình khác, vui lòng truy cập lại trang web của chúng tôi.</p>
+        <a href='{{frontendUrl}}' class='cta-button'>Đặt Lại Sân Ngay</a>
+      </div>
+      <div class='footer'>
+        <p>&copy; {{currentYear}} Sân Bóng Của Tôi. Mọi quyền được bảo lưu.</p>
+      </div>
     </div>
-</body>
+  </body>
 
 </html>
