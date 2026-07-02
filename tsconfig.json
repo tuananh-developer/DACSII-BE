@@ -16,7 +16,7 @@
         /* Tùy chọn về Module */
         "moduleResolution": "nodenext", // Cách TypeScript tìm kiếm module, nên để là 'node'
         "baseUrl": "./", // Thư mục gốc để giải quyết các đường dẫn import tuyệt đối
-        "ignoreDeprecations": "5.0",
+        "ignoreDeprecations": "6.0",
         "paths": { // (Tùy chọn) Định nghĩa các đường dẫn import ngắn gọn
             "@/*": [
                 "src/*"
