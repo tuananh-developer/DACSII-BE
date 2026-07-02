@@ -9,7 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThan, Repository, Like } from 'typeorm';
+import { MoreThan, Repository, Like, FindOptionsRelations } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Account } from './entities/account.entity';
 import { Role } from './entities/role.entity';
@@ -89,7 +89,7 @@ export class UsersService {
     @InjectRepository(Address)
     private addressRepository: Repository<Address>,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   /**
    * @method mapAccountToDto
@@ -135,8 +135,12 @@ export class UsersService {
       dto.address = {
         id: profile.address.id,
         street: profile.address.street,
-        latitude: profile.address.latitude ? Number(profile.address.latitude) : null,
-        longitude: profile.address.longitude ? Number(profile.address.longitude) : null,
+        latitude: profile.address.latitude
+          ? Number(profile.address.latitude)
+          : null,
+        longitude: profile.address.longitude
+          ? Number(profile.address.longitude)
+          : null,
         ward_name: profile.address.ward?.name,
         city_name: profile.address.city?.name,
       };
@@ -154,10 +158,13 @@ export class UsersService {
    */
   async findAccountByEmail(
     email: string,
-    relations: string[] = [],
+    relations: FindOptionsRelations<Account>,
   ): Promise<Account | null> {
     this.logger.log(`Finding account by email: ${email}`);
-    return this.accountRepository.findOne({ where: { email }, relations });
+    return this.accountRepository.findOne({
+      where: { email },
+      relations: relations,
+    });
   }
 
   /**
@@ -226,7 +233,7 @@ export class UsersService {
 
         const newProfile = transactionalEntityManager.create(UserProfile, {
           full_name: data.fullName,
-          avatar_url: data.avatarUrl ?? undefined
+          avatar_url: data.avatarUrl ?? undefined,
         });
         await transactionalEntityManager.save(newProfile);
 
@@ -265,7 +272,7 @@ export class UsersService {
         if (profile_data) {
           const account = await transactionalEntityManager.findOne(Account, {
             where: { id },
-            relations: ['userProfile'],
+            relations: { userProfile: true },
           });
           if (account && account.userProfile) {
             await transactionalEntityManager.update(
@@ -324,12 +331,12 @@ export class UsersService {
    */
   async findProfileByAccountId(
     accountId: string,
-    relations: string[] = [],
+    relations: FindOptionsRelations<UserProfile> = {},
   ): Promise<UserProfile | null> {
     this.logger.log(`Finding profile by account id: ${accountId}`);
     return this.userProfileRepository.findOne({
       where: { account: { id: accountId } },
-      relations: [...new Set(['account', 'branch', 'address', 'address.city', 'address.ward', ...relations])],
+      relations: { ...relations },
     });
   }
   /**
@@ -339,13 +346,16 @@ export class UsersService {
    */
   async findAccountById(
     id: string,
-    relations: string[] = [],
+    relations: FindOptionsRelations<Account> = {},
   ): Promise<AccountResponseDto | null> {
     this.logger.log(`Finding account by id: ${id}`);
     if (!id) {
       throw new NotFoundException('ID người dùng không hợp lệ.');
     }
-    const account = await this.accountRepository.findOne({ where: { id }, relations });
+    const account = await this.accountRepository.findOne({
+      where: { id },
+      relations,
+    });
     return account ? this.mapAccountToDto(account) : null;
   }
 
@@ -380,7 +390,7 @@ export class UsersService {
     // 1. Tìm tài khoản và userProfile liên quan
     const account = await this.accountRepository.findOne({
       where: { id: accountId },
-      relations: ['userProfile', 'userProfile.address'], // Join thêm address
+      relations: { userProfile: { address: true } },
     });
 
     if (!account || !account.userProfile) {
@@ -410,7 +420,9 @@ export class UsersService {
         this.logger.warn(
           `Invalid date of birth provided for account ${accountId}: ${data.date_of_birth.toISOString()} is in the future.`,
         );
-        throw new BadRequestException('Ngày sinh không được lớn hơn ngày hiện tại.');
+        throw new BadRequestException(
+          'Ngày sinh không được lớn hơn ngày hiện tại.',
+        );
       }
       userProfile.date_of_birth = data.date_of_birth;
     }
@@ -485,7 +497,9 @@ export class UsersService {
    * @param userProfileId ID của UserProfile (manager_id trong Branch).
    * @returns Promise giải quyết thành Branch hoặc null nếu không tìm thấy.
    */
-  async findBranchByManagerProfileId(userProfileId: string): Promise<Branch | null> {
+  async findBranchByManagerProfileId(
+    userProfileId: string,
+  ): Promise<Branch | null> {
     this.logger.log(`Finding branch for manager profile id: ${userProfileId}`);
     return this.branchRepository.findOne({
       where: { manager_id: userProfileId },
@@ -499,30 +513,38 @@ export class UsersService {
    * @param search Từ khóa tìm kiếm theo tên.
    * @returns Promise giải quyết thành một AccountPaginatedResponseDto.
    */
-  async findAllUser(page: number, limit: number, search?: string): Promise<AccountPaginatedResponseDto> {
-    this.logger.log(`Finding all users for page: ${page}, limit: ${limit}, search: ${search}`);
-    
-    const whereCondition = search 
-      ? { userProfile: { full_name: Like(`%${search}%`) } } 
+  async findAllUser(
+    page: number,
+    limit: number,
+    search?: string,
+  ): Promise<AccountPaginatedResponseDto> {
+    this.logger.log(
+      `Finding all users for page: ${page}, limit: ${limit}, search: ${search}`,
+    );
+
+    const whereCondition = search
+      ? { userProfile: { full_name: Like(`%${search}%`) } }
       : {};
 
     const [user, total] = await this.accountRepository.findAndCount({
       where: whereCondition,
-      relations: [
-        'userProfile',
-        'role',
-        'userProfile.branch',
-        'userProfile.address',
-        'userProfile.address.city',
-        'userProfile.address.ward',
-      ],
+      relations: {
+        role: true,
+        userProfile: {
+          branch: true,
+          address: {
+            city: true,
+            ward: true,
+          },
+        },
+      },
       skip: (page - 1) * limit,
       take: limit,
       order: { created_at: 'DESC' },
     });
 
     const response = new AccountPaginatedResponseDto();
-    response.data = user.map(u => this.mapAccountToDto(u));
+    response.data = user.map((u) => this.mapAccountToDto(u));
     response.total = total;
     return response;
   }
@@ -565,7 +587,7 @@ export class UsersService {
       where: {
         phone_number: phone,
       },
-      relations: ['account'], // Tải kèm thông tin tài khoản để kiểm tra
+      relations: { account: true }, // Tải kèm thông tin tài khoản để kiểm tra
     });
   }
 
@@ -586,12 +608,9 @@ export class UsersService {
     }
     const account = await this.accountRepository.findOne({
       where: { id: accountId },
-      relations: [
-        'userProfile',
-        'userProfile.address',
-        'userProfile.address.city',
-        'userProfile.address.ward',
-      ],
+      relations: {
+        userProfile: { address: { city: true, ward: true } },
+      },
     });
 
     if (!account || !account.userProfile) {
@@ -600,7 +619,9 @@ export class UsersService {
     const baseUrl = this.configService.get<string>('BASE_URL');
     account.userProfile.avatar_url = `${baseUrl}/uploads/${avatarFilename}`;
 
-    const savedProfile = await this.userProfileRepository.save(account.userProfile);
+    const savedProfile = await this.userProfileRepository.save(
+      account.userProfile,
+    );
     return this.mapProfileToDto(savedProfile);
   }
 
@@ -658,7 +679,7 @@ export class UsersService {
         phone_number: phone,
         account: { is_verified: true }, // Chỉ tìm các tài khoản đã xác thực
       },
-      relations: ['account'], // Tải kèm thông tin tài khoản để kiểm tra
+      relations: { account: true }, // Tải kèm thông tin tài khoản để kiểm tra
     });
   }
 
@@ -679,7 +700,10 @@ export class UsersService {
     // 1. Lấy thông tin người đang thực hiện request (kèm Role và Branch)
     const requester = await this.accountRepository.findOne({
       where: { id: requesterId },
-      relations: ['role', 'userProfile', 'userProfile.branch'],
+      relations: {
+        role: true,
+        userProfile: { branch: true },
+      },
     });
 
     if (!requester) {
@@ -692,7 +716,10 @@ export class UsersService {
     // 2. Phân quyền: kiểm tra người tạo có quyền tạo vai trò này không
     if (requesterRoleName === String(RoleEnum.Admin)) {
       // Admin có thể tạo cả Manager và Staff
-      if (targetRoleName !== RoleEnum.Manager && targetRoleName !== RoleEnum.Staff) {
+      if (
+        targetRoleName !== RoleEnum.Manager &&
+        targetRoleName !== RoleEnum.Staff
+      ) {
         this.logger.warn(
           `Admin ${requesterId} tried to create an employee with invalid role ${targetRoleName as string}.`,
         );
@@ -706,9 +733,7 @@ export class UsersService {
         this.logger.warn(
           `Manager ${requesterId} tried to create an employee with role ${targetRoleName as string}, but only 'staff' is allowed.`,
         );
-        throw new ForbiddenException(
-          'Manager chỉ có thể tạo tài khoản Staff.',
-        );
+        throw new ForbiddenException('Manager chỉ có thể tạo tài khoản Staff.');
       }
       if (!requester.userProfile?.branch?.id) {
         this.logger.error(
@@ -749,79 +774,83 @@ export class UsersService {
     const hashedPassword = await this.hashPassword(data.password);
 
     // 6. Thực hiện Transaction lưu DB
-    const savedAccount = await this.accountRepository.manager.transaction(async (manager) => {
-      // 6.1 Lấy Role từ DB (để đảm bảo vai trò tồn tại)
-      const targetRoleEntity = await manager.findOne(Role, {
-        where: { name: targetRoleName },
-      });
-      if (!targetRoleEntity)
-        throw new NotFoundException(
-          `Vai trò '${String(targetRoleName)}' không tồn tại.`,
-        );
-
-      // Logic lấy Branch ID
-      const targetBranchId =
-        requesterRoleName === String(RoleEnum.Admin)
-          ? data.branchId
-          : requester.userProfile?.branch?.id;
-
-      if (!targetBranchId) {
-        throw new BadRequestException(
-          'Không xác định được chi nhánh làm việc.',
-        );
-      }
-
-      // 6.2 Lấy Branch từ DB
-      const branch = await manager.findOne(Branch, {
-        where: { id: targetBranchId },
-      });
-      if (!branch) throw new NotFoundException('Chi nhánh không tồn tại.');
-
-      // 6.3 Tạo UserProfile
-      const newProfile = manager.create(UserProfile, {
-        full_name: data.fullName,
-        phone_number: data.phoneNumber,
-        gender: data.gender || null,
-        bio: data.bio || null,
-        is_profile_complete: true, // Nhân viên thì coi như profile đã xong
-        branch: branch, // Gán quan hệ Branch vào đây (Quan trọng!)
-      });
-      await manager.save(newProfile);
-
-      // 6.4 Tạo Account
-      const newAccount = manager.create(Account, {
-        email: data.email,
-        password_hash: hashedPassword,
-        is_verified: true, // Tài khoản nội bộ được xác thực luôn
-        status: AccountStatus.ACTIVE,
-        userProfile: newProfile,
-        role: targetRoleEntity, // Gán thực thể Role
-      });
-
-      const savedAccountEntity = await manager.save(newAccount);
-
-      // (Tùy chọn) Nếu tạo Manager, cập nhật lại bảng Branch để set người này làm manager_id
-      if (targetRoleName === RoleEnum.Manager) {
-        // Lưu ý: Logic này sẽ ghi đè manager cũ nếu có
-        await manager.update(Branch, targetBranchId, {
-          manager_id: newProfile.id,
+    const savedAccount = await this.accountRepository.manager.transaction(
+      async (manager) => {
+        // 6.1 Lấy Role từ DB (để đảm bảo vai trò tồn tại)
+        const targetRoleEntity = await manager.findOne(Role, {
+          where: { name: targetRoleName },
         });
-      }
+        if (!targetRoleEntity)
+          throw new NotFoundException(
+            `Vai trò '${String(targetRoleName)}' không tồn tại.`,
+          );
 
-      return savedAccountEntity;
-    });
+        // Logic lấy Branch ID
+        const targetBranchId =
+          requesterRoleName === String(RoleEnum.Admin)
+            ? data.branchId
+            : requester.userProfile?.branch?.id;
+
+        if (!targetBranchId) {
+          throw new BadRequestException(
+            'Không xác định được chi nhánh làm việc.',
+          );
+        }
+
+        // 6.2 Lấy Branch từ DB
+        const branch = await manager.findOne(Branch, {
+          where: { id: targetBranchId },
+        });
+        if (!branch) throw new NotFoundException('Chi nhánh không tồn tại.');
+
+        // 6.3 Tạo UserProfile
+        const newProfile = manager.create(UserProfile, {
+          full_name: data.fullName,
+          phone_number: data.phoneNumber,
+          gender: data.gender || null,
+          bio: data.bio || null,
+          is_profile_complete: true, // Nhân viên thì coi như profile đã xong
+          branch: branch, // Gán quan hệ Branch vào đây (Quan trọng!)
+        });
+        await manager.save(newProfile);
+
+        // 6.4 Tạo Account
+        const newAccount = manager.create(Account, {
+          email: data.email,
+          password_hash: hashedPassword,
+          is_verified: true, // Tài khoản nội bộ được xác thực luôn
+          status: AccountStatus.ACTIVE,
+          userProfile: newProfile,
+          role: targetRoleEntity, // Gán thực thể Role
+        });
+
+        const savedAccountEntity = await manager.save(newAccount);
+
+        // (Tùy chọn) Nếu tạo Manager, cập nhật lại bảng Branch để set người này làm manager_id
+        if (targetRoleName === RoleEnum.Manager) {
+          // Lưu ý: Logic này sẽ ghi đè manager cũ nếu có
+          await manager.update(Branch, targetBranchId, {
+            manager_id: newProfile.id,
+          });
+        }
+
+        return savedAccountEntity;
+      },
+    );
 
     // Reload to get relations for mapping
     const reloadedAccount = await this.accountRepository.findOne({
       where: { id: savedAccount.id },
-      relations: [
-        'userProfile',
-        'role',
-        'userProfile.branch',
-        'userProfile.address',
-        'userProfile.address.city',
-        'userProfile.address.ward',
-      ],
+      relations: {
+        role: true,
+        userProfile: {
+          branch: true,
+          address: {
+            city: true,
+            ward: true,
+          },
+        },
+      },
     });
 
     return this.mapAccountToDto(reloadedAccount!);

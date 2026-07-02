@@ -52,7 +52,7 @@ export class UsersController {
    * @constructor
    * @param {UsersService} usersService - Service xử lý logic nghiệp vụ liên quan đến người dùng.
    */
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   /**
    * @route GET /users/me
@@ -67,15 +67,14 @@ export class UsersController {
     summary: 'Lấy thông tin hồ sơ của người dùng đang đăng nhập',
   })
   @ApiResponse({ status: 200, type: AccountResponseDto })
-  getProfile(@User('sub') accountID: string): Promise<AccountResponseDto | null> {
+  getProfile(
+    @User('sub') accountID: string,
+  ): Promise<AccountResponseDto | null> {
     this.logger.log(`Fetching profile for user ${accountID}`);
-    return this.usersService.findAccountById(accountID, [
-      'userProfile',
-      'role',
-      'userProfile.address',
-      'userProfile.address.city',
-      'userProfile.address.ward',
-    ]);
+    return this.usersService.findAccountById(accountID, {
+      role: true,
+      userProfile: { address: { city: true, ward: true } },
+    });
   }
 
   /**
@@ -89,7 +88,11 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cập nhật hồ sơ của người dùng đang đăng nhập' })
-  @ApiResponse({ status: 200, type: MessageResponseDto, description: 'Cập nhật thành công.' })
+  @ApiResponse({
+    status: 200,
+    type: MessageResponseDto,
+    description: 'Cập nhật thành công.',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng.' })
   async updateProfile(
@@ -116,7 +119,11 @@ export class UsersController {
   @UseInterceptors(FileInterceptor('avatar')) // 'avatar' là tên field trong FormData
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cập nhật ảnh đại diện' })
-  @ApiResponse({ status: 200, type: UserProfileResponseDto, description: 'Cập nhật thành công.' })
+  @ApiResponse({
+    status: 200,
+    type: UserProfileResponseDto,
+    description: 'Cập nhật thành công.',
+  })
   async uploadAvatar(
     @User('id') accountId: string,
     @UploadedFile() file: Express.Multer.File,
@@ -144,7 +151,11 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Thay đổi mật khẩu của người dùng đang đăng nhập' })
   @ApiBody({ type: ChangePasswordDto })
-  @ApiResponse({ status: 200, type: MessageResponseDto, description: 'Đổi mật khẩu thành công.' })
+  @ApiResponse({
+    status: 200,
+    type: MessageResponseDto,
+    description: 'Đổi mật khẩu thành công.',
+  })
   @ApiResponse({ status: 400, description: 'Mật khẩu mới không hợp lệ.' })
   @ApiResponse({ status: 401, description: 'Mật khẩu cũ không chính xác.' })
   async changePassword(
@@ -153,7 +164,9 @@ export class UsersController {
   ): Promise<MessageResponseDto> {
     this.logger.log(`Changing password for user ${user.id}`);
     if (changePasswordDto.oldPassword === changePasswordDto.newPassword) {
-      throw new BadRequestException('Mật khẩu mới không được trùng với mật khẩu cũ.');
+      throw new BadRequestException(
+        'Mật khẩu mới không được trùng với mật khẩu cũ.',
+      );
     }
     return this.usersService.changePassword(
       user.id,
@@ -173,13 +186,19 @@ export class UsersController {
   @Roles(RoleEnum.Admin)
   @ApiBearerAuth()
   @ApiOperation({ summary: '(Admin) Lấy danh sách tất cả người dùng' })
-  @ApiResponse({ status: 200, type: AccountPaginatedResponseDto, description: 'Trả về danh sách người dùng.' })
+  @ApiResponse({
+    status: 200,
+    type: AccountPaginatedResponseDto,
+    description: 'Trả về danh sách người dùng.',
+  })
   async GetUsers(
     @Query() query: PaginationQueryDto,
-    @Query('search') search?: string
+    @Query('search') search?: string,
   ): Promise<AccountPaginatedResponseDto> {
     const { page = 1, limit = 10 } = query;
-    this.logger.log(`Fetching all users for page ${page}, limit ${limit}, search ${search}`);
+    this.logger.log(
+      `Fetching all users for page ${page}, limit ${limit}, search ${search}`,
+    );
     return await this.usersService.findAllUser(page, limit, search);
   }
 
@@ -194,7 +213,11 @@ export class UsersController {
   @Roles(RoleEnum.Admin)
   @ApiBearerAuth()
   @ApiOperation({ summary: '(Admin) Khóa tài khoản người dùng' })
-  @ApiResponse({ status: 200, type: MessageResponseDto, description: 'Khóa tài khoản thành công.' })
+  @ApiResponse({
+    status: 200,
+    type: MessageResponseDto,
+    description: 'Khóa tài khoản thành công.',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy tài khoản.' })
   async banUser(@Param('id') id: string): Promise<MessageResponseDto> {
     this.logger.log(`Banning user ${id}`);
@@ -212,7 +235,11 @@ export class UsersController {
   @Roles(RoleEnum.Admin)
   @ApiBearerAuth()
   @ApiOperation({ summary: '(Admin) Mở khóa tài khoản người dùng' })
-  @ApiResponse({ status: 200, type: MessageResponseDto, description: 'Mở khóa tài khoản thành công.' })
+  @ApiResponse({
+    status: 200,
+    type: MessageResponseDto,
+    description: 'Mở khóa tài khoản thành công.',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy tài khoản.' })
   async unbanUser(@Param('id') id: string): Promise<MessageResponseDto> {
     this.logger.log(`Unbanning user ${id}`);
@@ -232,9 +259,14 @@ export class UsersController {
   @Roles(RoleEnum.Admin, RoleEnum.Manager) // Chỉ Admin và Manager được phép
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Tạo tài khoản nhân viên (Admin có thể chọn Manager/Staff, Manager chỉ tạo Staff)',
+    summary:
+      'Tạo tài khoản nhân viên (Admin có thể chọn Manager/Staff, Manager chỉ tạo Staff)',
   })
-  @ApiResponse({ status: 201, type: AccountResponseDto, description: 'Tạo nhân viên thành công.' })
+  @ApiResponse({
+    status: 201,
+    type: AccountResponseDto,
+    description: 'Tạo nhân viên thành công.',
+  })
   @ApiResponse({ status: 403, description: 'Không có quyền tạo.' })
   async createEmployee(
     @User() user: AuthenticatedUser,
@@ -245,9 +277,6 @@ export class UsersController {
         createEmployeeDto,
       )}`,
     );
-    return await this.usersService.createEmployee(
-      user.id,
-      createEmployeeDto,
-    );
+    return await this.usersService.createEmployee(user.id, createEmployeeDto);
   }
 }
