@@ -75,7 +75,7 @@ export class PricingService {
     // 2. Kiểm tra Sân bóng có tồn tại và đang hoạt động không
     const field = await this.fieldRepository.findOne({
       where: { id: fieldId },
-      relations: ['fieldType', 'branch'], // Cần lấy loại sân để tra giá
+      relations: { fieldType: true, branch: true }, // Cần lấy loại sân để tra giá
     });
 
     if (!field) {
@@ -227,7 +227,7 @@ export class PricingService {
    */
   async getAllTimeSlots(): Promise<TimeSlotDto[]> {
     this.logger.log('Fetching all time slots.');
-    const slots = await this.timeSlotRepository.find({ relations: ['field', 'field.fieldType'] });
+    const slots = await this.timeSlotRepository.find({ relations: { field: { fieldType: true } } });
     return slots.map(s => this.mapToDto(s));
   }
 
@@ -241,7 +241,13 @@ export class PricingService {
    */
   async updateTimeSlot(id: number, dto: UpdateTimeSlotDto): Promise<TimeSlotDto> {
     this.logger.log(`Updating time slot with ID ${id} with data: ${JSON.stringify(dto)}`);
-    const timeSlot = await this.timeSlotRepository.findOne({ where: { id }, relations: ['field', 'field.fieldType'] });
+    const timeSlot = await this.timeSlotRepository.findOne({ 
+      where: { id }, 
+      relations: { 
+        field: { fieldType: true } 
+      } 
+    }
+  );
 
     if (!timeSlot) {
       this.logger.warn(`Time slot with ID ${id} not found.`);
@@ -276,7 +282,10 @@ export class PricingService {
   async createTimeSlot(dto: import('./dto/create-time-slot.dto').CreateTimeSlotDto): Promise<TimeSlotDto> {
     this.logger.log(`Creating new time slot for field ${dto.field_id}`);
     
-    const field = await this.fieldRepository.findOne({ where: { id: dto.field_id }, relations: ['fieldType'] });
+    const field = await this.fieldRepository.findOne(
+      { where: { id: dto.field_id }, 
+      relations: { fieldType: true } 
+    });
     if (!field) {
       throw new NotFoundException(`Sân bóng với ID ${dto.field_id} không tồn tại.`);
     }

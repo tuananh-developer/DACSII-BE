@@ -183,7 +183,7 @@ export class ReviewService {
           id: fieldId,
         },
       },
-      relations: ['userProfile'], // Load thông tin người đánh giá (để hiện tên, avatar)
+      relations: { userProfile: true }, // Load thông tin người đánh giá (để hiện tên, avatar)
       order: { createdAt: 'DESC' },
       skip,
       take: limit,
@@ -217,7 +217,7 @@ export class ReviewService {
       where: {
         userProfile: { account: { id: user.id } }
       },
-      relations: ['field', 'booking', 'userProfile'],
+      relations: { field: true, booking: true, userProfile: true },
       order: { createdAt: 'DESC' },
       skip,
       take: limit,
@@ -293,12 +293,14 @@ export class ReviewService {
     // 1. Tìm review kèm thông tin chi nhánh
     const review = await this.reviewRepository.findOne({
       where: { id },
-      relations: [
-        'field',
-        'field.branch',
-        'userProfile',
-        'userProfile.account',
-      ],
+      relations: {
+        field: {
+          branch: true,
+        },
+        userProfile: {
+          account: true,
+        },
+      },
     });
 
     if (!review) {

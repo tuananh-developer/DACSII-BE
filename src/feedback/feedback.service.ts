@@ -185,7 +185,11 @@ export class FeedbackService {
     const feedbacks = await this.feedbackRepo.find({
       where: { submitter: { account: { id: account.id } } },
       order: { created_at: 'DESC' },
-      relations: ['responses', 'responses.responder', 'submitter', 'submitter.account', 'assignee'],
+      relations: { 
+        responses: { responder: true }, 
+        submitter: { account: true }, 
+        assignee: true 
+      },
     });
 
     return feedbacks.map(f => this.mapToDto(f));
@@ -200,7 +204,11 @@ export class FeedbackService {
     this.logger.log('Finding all feedbacks');
     const feedbacks = await this.feedbackRepo.find({
       order: { created_at: 'DESC' },
-      relations: ['submitter', 'submitter.account', 'assignee', 'responses', 'responses.responder'], // Load thông tin người gửi + account
+      relations: { 
+        submitter: { account: true }, 
+        assignee: true, 
+        responses: { responder: true } 
+      }, // Load thông tin người gửi + account
     });
 
     return feedbacks.map(f => this.mapToDto(f));
@@ -217,7 +225,11 @@ export class FeedbackService {
     this.logger.log(`Finding feedback with id ${id}`);
     const feedback = await this.feedbackRepo.findOne({
       where: { id },
-      relations: ['responses', 'responses.responder', 'submitter', 'submitter.account', 'assignee'],
+      relations: { 
+        responses: { responder: true }, 
+        submitter: { account: true }, 
+        assignee: true 
+      },
       order: {
         responses: { created_at: 'ASC' },
       },
