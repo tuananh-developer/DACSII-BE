@@ -16,7 +16,7 @@ import { LocationModule } from './location/locations.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import vnpayConfig from './payment/config/vnpay.config';
 import googleOauthConfig from './auth/config/google-oauth.config';
-import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/adapters/handlebars.adapter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventModule } from './event/event.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
