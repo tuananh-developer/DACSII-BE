@@ -33,8 +33,6 @@ import { AuthMessageResponseDto } from './dto/auth-message-response.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { TokenResponseDto } from './dto/token-response.dto';
 
-
-
 /**
  * @class AuthService
  * @description Chịu trách nhiệm xử lý tất cả logic nghiệp vụ liên quan đến xác thực,
@@ -61,12 +59,16 @@ export class AuthService {
     private readonly httpService: HttpService,
     private readonly voucherService: VoucherService,
   ) {
-    this.googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID') as string;
+    this.googleClientId = this.configService.get<string>(
+      'GOOGLE_CLIENT_ID',
+    ) as string;
     if (this.googleClientId) {
       this.googleClient = new OAuth2Client(this.googleClientId);
     } else {
       this.logger.error('GOOGLE_CLIENT_ID is not configured');
-      throw new InternalServerErrorException('Lỗi cấu hình Google OAuth: GOOGLE_CLIENT_ID is missing');
+      throw new InternalServerErrorException(
+        'Lỗi cấu hình Google OAuth: GOOGLE_CLIENT_ID is missing',
+      );
     }
   }
 
@@ -83,7 +85,9 @@ export class AuthService {
   ): Promise<AuthMessageResponseDto> {
     const { email, full_name, password, phone_number, gender } = registerDto;
     this.logger.log(`Initiating registration for email: ${email}`);
-    const existingAccount = await this.userService.findAccountByEmail(email);
+    const existingAccount = await this.userService.findAccountByEmail(email, {
+      userProfile: true,
+    });
 
     // 1. Kiểm tra xem email đã được xác thực chưa
     if (existingAccount && existingAccount.is_verified) {
@@ -172,11 +176,9 @@ export class AuthService {
     code: string,
   ): Promise<LoginResponseDto & { refreshToken: string }> {
     this.logger.log(`Completing registration for ${email}`);
-    const account = await this.userService.findAccountByEmail(email, [
-      'role',
-      'userProfile',
-      'userProfile.branch',
-    ]);
+    const account = await this.userService.findAccountByEmail(email, {
+      userProfile: true,
+    });
     if (!account || account.is_verified) {
       this.logger.warn(`Invalid registration completion attempt for ${email}`);
       throw new ConflictException('Yêu cầu xác thực không hợp lệ.');
@@ -197,7 +199,7 @@ export class AuthService {
     await this.userService.updateAccount(account.id, {
       verification_code: null,
       verification_code_expires_at: null,
-    })
+    });
 
     // Sau khi đăng ký thành công, tạo voucher chào mừng
     const userProfile = await this.userService.findProfileByAccountId(
@@ -223,11 +225,10 @@ export class AuthService {
     pass: string,
   ): Promise<Omit<Account, 'password_hash'> | null> {
     this.logger.log(`Validating user ${email}`);
-    const account = await this.userService.findAccountByEmail(email, [
-      'role',
-      'userProfile',
-      'userProfile.branch',
-    ]);
+    const account = await this.userService.findAccountByEmail(email, {
+      role: true,
+      userProfile: { branch: true },
+    });
 
     // Chỉ cho phép tài khoản đã xác thực đăng nhập
     if (
@@ -244,7 +245,7 @@ export class AuthService {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { password_hash, ...result } = account;
         this.logger.log(`User ${email} validated successfully`);
-        return result as unknown as Omit<Account, 'password_hash'>;
+        return result;
       }
     }
     this.logger.warn(`User ${email} validation failed`);
@@ -260,13 +261,16 @@ export class AuthService {
    * @returns {Promise<LoginResponseDto & { refreshToken: string }>} - Một đối tượng chứa `accessToken`, `refreshToken`, và thông tin cơ bản của người dùng.
    * @throws {InternalServerErrorException} Nếu thiếu các biến môi trường cấu hình JWT.
    */
-  async login(user: AuthenticatedUser | Account): Promise<LoginResponseDto & { refreshToken: string }> {
+  async login(
+    user: AuthenticatedUser | Account,
+  ): Promise<LoginResponseDto & { refreshToken: string }> {
     this.logger.log(`Logging in user ${user.email}`);
     const account = user as Account;
     const authenticatedUser = user as AuthenticatedUser;
 
     const userProfile = account.userProfile;
-    const branchId = userProfile?.branch?.id ?? authenticatedUser.branch_id ?? undefined;
+    const branchId =
+      userProfile?.branch?.id ?? authenticatedUser.branch_id ?? undefined;
     const userProfileId = userProfile?.id ?? authenticatedUser.userProfileId;
 
     const roleName = user.role.name;
@@ -331,10 +335,10 @@ export class AuthService {
         role: roleName,
         is_profile_complete:
           user.userProfile &&
-            typeof user.userProfile === 'object' &&
-            'is_profile_complete' in user.userProfile
+          typeof user.userProfile === 'object' &&
+          'is_profile_complete' in user.userProfile
             ? ((user.userProfile as { is_profile_complete?: boolean })
-              .is_profile_complete ?? false)
+                .is_profile_complete ?? false)
             : false,
         is_active: account.status === AccountStatus.ACTIVE,
         branch: { branchId: branchId },
@@ -356,10 +360,10 @@ export class AuthService {
   ): Promise<Omit<Account, 'password_hash'>> {
     this.logger.log(`Validating OAuth login for ${payload.email}`);
     // Tải trước userProfile và role để tránh truy vấn thừa
-    const account = await this.userService.findAccountByEmail(payload.email, [
-      'userProfile',
-      'role',
-    ]);
+    const account = await this.userService.findAccountByEmail(payload.email, {
+      userProfile: true,
+      role: true,
+    });
 
     // Nếu tài khoản đã tồn tại
     if (account) {
@@ -387,7 +391,7 @@ export class AuthService {
     // newUserAccount từ createOAuthUser đã bao gồm userProfile và role
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password_hash, ...accountDetails } = newUserAccount;
-    return accountDetails as unknown as Omit<Account, 'password_hash'>;
+    return accountDetails;
   }
 
   /**
@@ -401,11 +405,15 @@ export class AuthService {
   async refreshTokens(userID: string): Promise<TokenResponseDto> {
     this.logger.log(`Refreshing tokens for user ${userID}`);
     // Tải tài khoản cùng với vai trò để tạo token
-    const account = await this.userService.findAccountByEmail((await this.userService.findAccountById(userID))?.email || '', [
-      'role',
-      'userProfile',
-      'userProfile.branch',
-    ]);
+    const account = await this.userService.findAccountByEmail(
+      (await this.userService.findAccountById(userID))?.email || '',
+      {
+        role: true,
+        userProfile: {
+          branch: true,
+        },
+      },
+    );
     if (!account || account.status !== AccountStatus.ACTIVE) {
       this.logger.warn(
         `Token refresh attempt for non-existent or inactive user ${userID}`,
@@ -415,9 +423,7 @@ export class AuthService {
       );
     }
 
-    const accessToken = await this.createAccessToken(
-      account as unknown as AuthenticatedUser,
-    );
+    const accessToken = await this.createAccessToken(account);
 
     this.logger.log(`Tokens refreshed for user ${userID}`);
     return { accessToken };
@@ -438,10 +444,16 @@ export class AuthService {
       return { message: 'Đăng xuất thành công' };
     }
 
-    const account = await this.userService.findAccountByEmail(accountDto.email);
+    const account = await this.userService.findAccountByEmail(
+      accountDto.email,
+      { userProfile: true },
+    );
 
     // Revoke Google OAuth token nếu user đăng nhập bằng Google
-    if (account?.google_access_token && account.provider === AuthProvider.GOOGLE) {
+    if (
+      account?.google_access_token &&
+      account.provider === AuthProvider.GOOGLE
+    ) {
       try {
         const revokeUrl = this.configService.get<string>('GOOGLE_REVOKE_URL');
         if (!revokeUrl) {
@@ -474,7 +486,10 @@ export class AuthService {
    * @param {string} accountID - ID của tài khoản.
    * @param {string} accessToken - Google access token.
    */
-  async saveGoogleAccessToken(accountID: string, accessToken: string): Promise<void> {
+  async saveGoogleAccessToken(
+    accountID: string,
+    accessToken: string,
+  ): Promise<void> {
     this.logger.debug(`Saving Google access token for user ${accountID}`);
     await this.userService.updateAccount(accountID, {
       google_access_token: accessToken,
@@ -511,7 +526,8 @@ export class AuthService {
     const authenticatedUser = user as AuthenticatedUser;
 
     const userProfile = account.userProfile;
-    const branchId = userProfile?.branch?.id ?? authenticatedUser.branch_id ?? undefined;
+    const branchId =
+      userProfile?.branch?.id ?? authenticatedUser.branch_id ?? undefined;
     const userProfileId = userProfile?.id ?? authenticatedUser.userProfileId;
 
     const roleName = (user.role as unknown as { name: string }).name;
@@ -553,7 +569,9 @@ export class AuthService {
     returnUrl?: string,
   ): Promise<AuthMessageResponseDto> {
     this.logger.log(`Forgot password request for ${email}`);
-    const account = await this.userService.findAccountByEmail(email);
+    const account = await this.userService.findAccountByEmail(email, {
+      userProfile: true,
+    });
     if (
       !account ||
       !account.is_verified ||
@@ -712,13 +730,15 @@ export class AuthService {
    * @returns {Promise<LoginResponseDto & { refreshToken: string }>} - Một đối tượng chứa `accessToken`, `refreshToken`, và thông tin người dùng.
    * @throws {UnauthorizedException} Nếu tài khoản không tồn tại, mã OTP không hợp lệ hoặc đã hết hạn.
    */
-  async loginComplete(email: string, code: string): Promise<LoginResponseDto & { refreshToken: string }> {
+  async loginComplete(
+    email: string,
+    code: string,
+  ): Promise<LoginResponseDto & { refreshToken: string }> {
     this.logger.log(`Completing 2FA login for ${email}`);
-    const account = await this.userService.findAccountByEmail(email, [
-      'role',
-      'userProfile',
-      'userProfile.branch',
-    ]);
+    const account = await this.userService.findAccountByEmail(email, {
+      role: true,
+      userProfile: true,
+    });
     if (!account || account.status !== AccountStatus.ACTIVE) {
       this.logger.warn(
         `2FA login attempt for non-existent or inactive account ${email}`,
@@ -751,7 +771,9 @@ export class AuthService {
    * Xác thực idToken từ Native Mobile (Android/iOS)
    * Phân tích Token -> Lấy thông tin -> Tìm/Tạo User -> Trả về Access & Refresh Token
    */
-  async verifyGoogleAndroidToken(idToken: string): Promise<LoginResponseDto & { refreshToken: string }> {
+  async verifyGoogleAndroidToken(
+    idToken: string,
+  ): Promise<LoginResponseDto & { refreshToken: string }> {
     this.logger.log('Verifying Google Android token');
     try {
       const ticket = await this.googleClient.verifyIdToken({
@@ -769,10 +791,10 @@ export class AuthService {
       const fullName = payload.name as string;
       const avatarUrl = payload.picture as string;
 
-      let user = await this.userService.findAccountByEmail(email, [
-        'userProfile',
-        'role',
-      ]);
+      let user = await this.userService.findAccountByEmail(email, {
+        userProfile: true,
+        role: true,
+      });
       if (!user) {
         this.logger.log(`Creating new user for Google Android login: ${email}`);
         user = await this.userService.createOAuthUser({
