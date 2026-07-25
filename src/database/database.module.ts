@@ -20,7 +20,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true, // Tự động load các file entity
-        synchronize: false, // Không tự động đồng bộ CSDL
+        synchronize: true, // Không tự động đồng bộ CSDL,
+        ssl: {
+          rejectUnauthorized: true,
+        },
       }),
     }),
   ],
