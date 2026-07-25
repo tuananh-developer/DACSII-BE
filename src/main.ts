@@ -9,6 +9,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AllExceptionsFilter } from './common/http-exception.filter';
+import { ConfigService } from '@nestjs/config';
 
 /**
  * @async
@@ -22,28 +23,33 @@ async function bootstrap() {
 
   // Hidden endpoint for author validation
   const adapter = app.getHttpAdapter();
-  adapter.get('/health-check', (req: unknown, res: { send: (data: object) => void }) => {
-    res.send({ status: 'ok', developer: 'Tanh' });
-  });
+  adapter.get(
+    '/health-check',
+    (req: unknown, res: { send: (data: object) => void }) => {
+      res.send({ status: 'ok', developer: 'Tanh' });
+    },
+  );
 
   app.useGlobalFilters(new AllExceptionsFilter());
-  app.use(helmet({
-    // 1. Tắt hẳn COOP: Để browser hoạt động như mặc định, 
-    // giúp giữ kết nối window.opener chắc chắn 100%.
-    crossOriginOpenerPolicy: false,
+  app.use(
+    helmet({
+      // 1. Tắt hẳn COOP: Để browser hoạt động như mặc định,
+      // giúp giữ kết nối window.opener chắc chắn 100%.
+      crossOriginOpenerPolicy: false,
 
-    // 2. Cấu hình CSP: Cho phép script inline (unsafe-inline)
-    // Nếu không có dòng này, script postMessage sẽ bị chặn.
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"], // QUAN TRỌNG: Cho phép script trả về chạy
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'"],
+      // 2. Cấu hình CSP: Cho phép script inline (unsafe-inline)
+      // Nếu không có dòng này, script postMessage sẽ bị chặn.
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"], // QUAN TRỌNG: Cho phép script trả về chạy
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'"],
+        },
       },
-    },
-  }));
+    }),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -54,34 +60,35 @@ async function bootstrap() {
     }),
   );
 
-
   app.use(cookieParser());
 
-  const config = new DocumentBuilder()
-    .setTitle('API document')
-    .setDescription('API')
-    .setVersion('1.0')
-    .addBearerAuth({
-      type: 'http',
-      scheme: 'bearer',
-      bearerFormat: 'JWT',
-      name: 'JWT',
-      description: 'Nhập JWT Access Token',
-      in: 'header',
-    })
-    .addCookieAuth(
-      'refresh_token',
-      {
+  if (process.env.NODE_ENV === 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('API document')
+      .setDescription('API')
+      .setVersion('1.0')
+      .addBearerAuth({
         type: 'http',
-        in: 'Header', // Mặc dù là cookie, Swagger UI sẽ gửi qua header
-        scheme: 'Bearer',
-      },
-      'cookie_auth',
-    )
-    .build();
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Nhập JWT Access Token',
+        in: 'header',
+      })
+      .addCookieAuth(
+        'refresh_token',
+        {
+          type: 'http',
+          in: 'Header', // Mặc dù là cookie, Swagger UI sẽ gửi qua header
+          scheme: 'Bearer',
+        },
+        'cookie_auth',
+      )
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api-doc', app, document);
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api-doc', app, document);
+  }
 
   app.enableCors({
     origin: true,
