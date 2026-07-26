@@ -100,7 +100,9 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port, '0.0.0.0');
-  logger.log(`Application is running on: http://localhost:${port}`);
+  logger.log(
+    `Application is running on: ${process.env.BASE_URL}: ${process.env.PORT}`,
+  );
   logger.log(`Swagger is running on: http://localhost:${port}/api-doc`);
 }
 void bootstrap();
