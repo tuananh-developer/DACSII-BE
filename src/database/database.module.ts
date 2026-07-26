@@ -22,7 +22,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         autoLoadEntities: true, // Tự động load các file entity
         synchronize: true, // Không tự động đồng bộ CSDL,
         ssl: {
-          rejectUnauthorized: false,
+          rejectUnauthorized: true,
         },
       }),
     }),
