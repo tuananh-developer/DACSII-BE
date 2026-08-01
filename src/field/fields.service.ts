@@ -28,6 +28,7 @@ import { FieldTypeDto } from './dto/field-type.dto';
 import { FieldImageDto } from './dto/field-image.dto';
 import { FieldsResponseDto } from './dto/fields-response.dto';
 import { City } from '@/location/entities/city.entity';
+import { UploadService } from '@/upload/upload.service';
 
 /**
  * @class FieldsService
@@ -51,7 +52,8 @@ export class FieldsService {
     @InjectRepository(TimeSlot)
     private readonly timeSlotRepository: Repository<TimeSlot>,
     private readonly configService: ConfigService,
-  ) { }
+    private readonly uploadService: UploadService,
+  ) {}
 
   /**
    * @method mapToDto
@@ -67,7 +69,7 @@ export class FieldsService {
     dto.updatedAt = field.updatedAt;
     dto.averageRating = field.averageRating;
     dto.reviewCount = field.reviewCount;
-    dto.distance = field.distance
+    dto.distance = field.distance;
 
     if (field.fieldType) {
       dto.fieldType = this.mapTypeToDto(field.fieldType);
@@ -85,18 +87,24 @@ export class FieldsService {
         close_time: branch.close_time,
         created_at: branch.created_at,
         updated_at: branch.updated_at,
-        address: branch.address ? {
-          id: branch.address.id,
-          street: branch.address.street,
-          latitude: branch.address.latitude ? Number(branch.address.latitude) : null,
-          longitude: branch.address.longitude ? Number(branch.address.longitude) : null,
-          ward_name: branch.address.ward?.name || '',
-          city_name: branch.address.city?.name || '',
-        } : null,
+        address: branch.address
+          ? {
+              id: branch.address.id,
+              street: branch.address.street,
+              latitude: branch.address.latitude
+                ? Number(branch.address.latitude)
+                : null,
+              longitude: branch.address.longitude
+                ? Number(branch.address.longitude)
+                : null,
+              ward_name: branch.address.ward?.name || '',
+              city_name: branch.address.city?.name || '',
+            }
+          : null,
       };
     }
     if (field.images) {
-      dto.images = field.images.map(img => this.mapImageToDto(img));
+      dto.images = field.images.map((img) => this.mapImageToDto(img));
     } else {
       dto.images = [];
     }
@@ -202,7 +210,10 @@ export class FieldsService {
    * @description Lấy danh sách sân bóng kèm bộ lọc, phân trang và tính khoảng cách.
    * Ưu tiên: GPS > IP Geolocation/City > Global Hot.
    */
-  async findAll(filterDto: FilterFieldDto, ip?: string | null): Promise<FieldsResponseDto> {
+  async findAll(
+    filterDto: FilterFieldDto,
+    ip?: string | null,
+  ): Promise<FieldsResponseDto> {
     const {
       name,
       cityId,
@@ -222,7 +233,9 @@ export class FieldsService {
       if (geo) {
         [latitude, longitude] = geo.ll;
         locationSource = 'ip';
-        this.logger.log(`Guessed location from IP ${ip}: ${latitude}, ${longitude}`);
+        this.logger.log(
+          `Guessed location from IP ${ip}: ${latitude}, ${longitude}`,
+        );
       }
     }
 
@@ -287,7 +300,9 @@ export class FieldsService {
       if (locationSource === 'none' || locationSource === 'gps') {
         query.andWhere(`${distanceSql} <= :radius`).orderBy('distance', 'ASC');
       } else {
-        query.orderBy('distance', 'ASC').addOrderBy('field_averageRating', 'DESC');
+        query
+          .orderBy('distance', 'ASC')
+          .addOrderBy('field_averageRating', 'DESC');
       }
     } else {
       query.orderBy('field.createdAt', 'DESC');
@@ -314,7 +329,8 @@ export class FieldsService {
           .orderBy('field_averageRating', 'DESC')
           .take(5);
 
-        const fallback = await suggestionQuery.getRawAndEntities<FieldRawResult>();
+        const fallback =
+          await suggestionQuery.getRawAndEntities<FieldRawResult>();
         entities = fallback.entities;
         raw = fallback.raw;
 
@@ -324,10 +340,12 @@ export class FieldsService {
           : 'Khu vực bạn chọn hiện chưa có sân. Dưới đây là các sân HOT nhất hệ thống!';
       } else {
         suggestionQuery.orderBy('field_averageRating', 'DESC').take(5);
-        const fallback = await suggestionQuery.getRawAndEntities<FieldRawResult>();
+        const fallback =
+          await suggestionQuery.getRawAndEntities<FieldRawResult>();
         entities = fallback.entities;
         raw = fallback.raw;
-        suggestMessage = 'Hiện chưa có sân phù hợp bộ lọc. Gợi ý các sân HOT nhất dành cho bạn!';
+        suggestMessage =
+          'Hiện chưa có sân phù hợp bộ lọc. Gợi ý các sân HOT nhất dành cho bạn!';
       }
       finalTotal = entities.length;
     }
@@ -466,10 +484,10 @@ export class FieldsService {
     );
     const field = await this.fieldRepository.findOne({
       where: { id },
-      relations: { 
+      relations: {
         branch: true,
-         utilities: true 
-        },
+        utilities: true,
+      },
     });
 
     if (!field) {
@@ -488,7 +506,9 @@ export class FieldsService {
     const { branchId, fieldTypeId, utilityIds, ...fieldData } = updateFieldDto;
 
     if (!isAdmin && branchId && branchId !== field.branch.id) {
-      throw new ForbiddenException('Quản lý không được phép thay đổi chi nhánh của sân.');
+      throw new ForbiddenException(
+        'Quản lý không được phép thay đổi chi nhánh của sân.',
+      );
     }
 
     this.fieldRepository.merge(field, fieldData);
@@ -555,7 +575,9 @@ export class FieldsService {
       // This case should theoretically not be reached if findOne succeeds
       throw new NotFoundException(`Sân bóng ID ${id} không tồn tại`);
     }
-    this.logger.log(`Field ${id} removed successfully by user ${userProfile.id}`);
+    this.logger.log(
+      `Field ${id} removed successfully by user ${userProfile.id}`,
+    );
     return { message: 'Đã xóa sân bóng thành công' };
   }
 
@@ -585,17 +607,19 @@ export class FieldsService {
       }
     }
 
-    const baseUrl = this.configService.get<string>('BASE_URL');
+    const imagetoSave = await Promise.all(
+      files.map(async (file) => {
+        const uploadedUrl = await this.uploadService.uploadImage(file);
 
-    const images = files.map((file) =>
-      this.fieldImageRepository.create({
-        id: uuidv4(),
-        image_url: `${baseUrl}/uploads/${file.filename}`,
-        field: field,
+        return this.fieldImageRepository.create({
+          id: uuidv4(),
+          image_url: uploadedUrl,
+          field: field,
+        });
       }),
     );
 
-    const savedImages = await this.fieldImageRepository.save(images);
+    const savedImages = await this.fieldImageRepository.save(imagetoSave);
     this.logger.log(
       `Added ${savedImages.length} images to field ${fieldId} successfully`,
     );

@@ -26,6 +26,8 @@ import { Response } from 'express';
 import { BranchModule } from './branch/branch.module';
 import { UtilityModule } from './utility/utility.module';
 import { MulterModule } from '@nestjs/platform-express';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { UploadModule } from './upload/upload.module';
 
 /**
  * @module AppModule
@@ -105,10 +107,9 @@ import { MulterModule } from '@nestjs/platform-express';
      * Nới lỏng giới hạn dung lượng file lên 5MB để tránh lỗi 413 Payload Too Large.
      */
     MulterModule.register({
-      dest: "./uploads",
       limits: {
         fileSize: 5 * 1024 * 1024, // 5MB
-      }
+      },
     }),
 
     /**
@@ -182,6 +183,16 @@ import { MulterModule } from '@nestjs/platform-express';
         limit: 50, // 10 requests
       },
     ]),
+
+    // Module quản lý tích hợp với Cloudinary để lưu trữ hình ảnh.
+    CloudinaryModule,
+
+    /**
+     * @description
+     * Module quản lý tính năng tải lên (upload) các tệp (ví dụ: hình ảnh, video).
+     * Xử lý và gửi các tệp lên dịch vụ lưu trữ (Cloudinary).
+     */
+    UploadModule,
   ],
   controllers: [],
   providers: [
@@ -192,4 +203,4 @@ import { MulterModule } from '@nestjs/platform-express';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

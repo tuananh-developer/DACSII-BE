@@ -221,20 +221,7 @@ export class FieldsController {
   @Roles(RoleEnum.Admin, RoleEnum.Manager)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Tải lên hình ảnh cho một sân bóng' })
-  @UseInterceptors(
-    FilesInterceptor('images', 10, {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, cb) => {
-          const randomName = Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
-          cb(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-    }),
-  )
+  @UseInterceptors(FilesInterceptor('images', 10))
   @ApiResponse({ status: 201, description: 'Tải ảnh lên thành công.' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy sân bóng.' })
   async uploadImages(
